@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#193e34">
+  <title>Querycraft — SQL workspace</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#question">Skip to query composer</a>
+  <header class="app-header">
+    <a class="brand" href="/" aria-label="Querycraft home"><span class="brand-mark" aria-hidden="true">q.</span><span>Querycraft<span class="eyebrow">SQL WORKSPACE</span></span></a>
+    <div class="header-tools"><span id="connection" class="connection" role="status">Connecting…</span><label class="provider-label" for="provider">Generation mode<select id="provider" disabled><option value="demo">Demo templates</option><option value="llm" disabled>AI provider · not configured</option></select></label></div>
+  </header>
+  <div class="app-layout">
+    <aside class="sidebar" aria-label="Database inspector">
+      <div class="sidebar-heading"><span class="eyebrow">CONNECTED DATABASE</span><h2 id="database-name">Loading database…</h2><span class="database-kind" id="database-kind">SQLite</span></div>
+      <details class="schema-disclosure" open><summary>Schema <span id="table-count" class="count">—</span></summary><p class="sidebar-help">Inspect tables, columns, and relationships.</p><div id="schema" aria-live="polite"><p class="muted">Loading schema…</p></div><button type="button" id="schema-retry" class="text-button" hidden>Retry schema</button><p class="schema-legend"><span>PK</span> Primary key <span>↗</span> Foreign key</p></details>
+      <details class="history-disclosure"><summary>Session history <span id="history-count" class="count">0</span></summary><p class="sidebar-help">Last 10 queries. No result data is saved.</p><div id="history"><p class="muted">Your queries will appear here.</p></div></details>
+      <details class="settings-disclosure"><summary>Connection & settings</summary><p>General questions require a server-side AI provider. Set <code>LLM_BASE_URL</code>, <code>LLM_MODEL</code>, and <code>LLM_API_KEY</code>, then restart the server.</p><p>For your own SQLite file, set <code>QUERYCRAFT_DB</code> on the server. Demo templates are intended for the demo store.</p><p>Credentials stay on the server. Never paste API keys into a question.</p><p id="model-info" class="muted">Checking provider…</p></details>
+      <div class="sidebar-footer"><span class="small-dot" aria-hidden="true"></span> Inspect first. Run with intent.</div>
+    </aside>
+    <main id="workspace" class="workspace">
+      <div class="workspace-heading"><div><p class="eyebrow">QUESTION → SQL → ANSWER</p><h1>A little language.<br class="mobile-break"> A clear query.</h1><p class="intro">Ask a question, inspect the SQL, then explore the answer.</p></div><button id="reset" type="button" class="button secondary">＋ New query</button></div>
+      <div id="setup-error" class="error-message" role="alert" hidden><span id="setup-error-text"></span><button id="setup-retry" type="button" class="text-button">Retry connection</button></div>
+      <div class="data-notice" id="data-notice"><span class="notice-label">DATABASE</span><span id="data-notice-text">Connecting to your workspace…</span></div>
+      <section class="question-section" aria-labelledby="question-title">
+        <div class="section-heading"><h2 id="question-title"><span class="step">01</span> Ask your data</h2><span class="subtle" id="mode-caption">Natural language → SQLite</span></div>
+        <form id="question-form" novalidate>
+          <label class="sr-only" for="question">Your question</label>
+          <div class="composer"><textarea id="question" name="question" rows="3" maxlength="4000" placeholder="What would you like to know about your data?" aria-describedby="question-hint" disabled></textarea><div class="composer-footer"><span id="question-hint">Use a supported example in demo mode.</span><button id="generate" type="submit" class="button primary" disabled>Generate SQL <span aria-hidden="true">↗</span></button></div></div>
+          <div class="under-composer"><p id="mode-help">Demo mode uses a limited set of templates, not arbitrary natural-language generation.</p><span class="shortcut"><kbd>⌘ / Ctrl</kbd> + <kbd>Enter</kbd></span></div>
+          <div id="generate-error" class="error-message" role="alert" hidden></div>
+        </form>
+        <div class="examples"><span class="eyebrow">TRY A QUESTION</span><div id="examples" class="example-list"><span class="muted">Examples will appear when connected.</span></div></div>
+      </section>
+      <section class="sql-section" aria-labelledby="sql-title">
+        <div class="section-heading"><h2 id="sql-title"><span class="step">02</span> Review the SQL</h2><div class="heading-actions"><span id="sql-state" class="subtle">Editable · SQLite</span><button type="button" id="copy" class="text-button" disabled>Copy SQL</button></div></div>
+        <div class="sql-editor"><div class="editor-bar"><span class="file-tab">query.sql</span><span>SQLITE</span></div><label class="sr-only" for="sql">SQL query editor</label><textarea id="sql" rows="7" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="-- Your SQL will appear here.&#10;-- You can also write a read-only query directly." aria-describedby="sql-hint" disabled></textarea></div>
+        <div id="generation-notes" class="generation-notes" hidden><p id="explanation"></p><details id="assumptions-detail"><summary>Assumptions to review</summary><ul id="assumptions"></ul></details><span id="generated-provider" class="subtle"></span></div>
+        <div class="run-row"><p id="sql-hint">Nothing runs automatically. Review or edit your SQL first.</p><button id="run" type="button" class="button primary" disabled><span aria-hidden="true">▷</span> Run query</button></div>
+        <div id="execute-error" class="error-message" role="alert" hidden></div>
+      </section>
+      <section class="results-section" aria-labelledby="results-title" aria-busy="false" id="results-section">
+        <div class="section-heading"><h2 id="results-title"><span class="step">03</span> Explore the results</h2><div class="heading-actions"><span id="results-meta" class="subtle" role="status"></span><span id="truncated" class="badge" hidden>Row limit reached</span><button id="download" type="button" class="text-button" disabled>↓ Download CSV</button></div></div>
+        <div id="results-empty" class="results-empty"><span class="empty-glyph" aria-hidden="true">⊞</span><h3>Your answer starts with a query.</h3><p>Generate SQL above, review it, and select Run query.<br>No data has been queried yet.</p></div>
+        <div id="results-table-wrap" class="table-wrap" tabindex="0" role="region" aria-label="Query results, scroll to explore" hidden><table id="results-table"><caption class="sr-only">Results from your last executed SQL query</caption><thead id="results-head"></thead><tbody id="results-body"></tbody></table></div>
+      </section>
+      <footer class="workspace-footer"><span>Words in. Clarity out.</span><span id="row-limit">Read-only queries · results are limited</span></footer>
+    </main>
+  </div>
+  <div id="announcement" class="sr-only" role="status" aria-live="polite"></div>
+  <noscript><p class="noscript">JavaScript is required to generate and run queries in this workspace.</p></noscript>
+</body>
+</html>
